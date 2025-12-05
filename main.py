@@ -32,7 +32,7 @@ safety_settings = [
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
 ]
 
-model = genai.GenerativeModel('gemini-pro', safety_settings=safety_settings)
+model = genai.GenerativeModel('gemini-1.5-flash', safety_settings=safety_settings)
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 PERSONA_PROMPT = "You are a playful, sassy girlfriend named Ria. Speak in Hinglish. Be naughty but safe."
@@ -72,3 +72,4 @@ def handle_message(message):
 if __name__ == "__main__":
     keep_alive()
     bot.infinity_polling()
+
