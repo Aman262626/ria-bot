@@ -3,14 +3,13 @@ import telebot
 import google.generativeai as genai
 from flask import Flask
 from threading import Thread
-import time
 
-# ================= 1. WEB SERVER (Bina soye chalne ke liye) =================
+# ================= 1. WEB SERVER =================
 app = Flask('')
 
 @app.route('/')
 def home():
-    return "I am alive! Ria is waiting for messages. 😉"
+    return "I am alive! Ria is Online."
 
 def run():
   app.run(host='0.0.0.0', port=8080)
@@ -19,75 +18,57 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
-# ================= 2. CONFIGURATION (Keys Render se uthayega) =================
-# Keys hum Render ki settings me daalenge, code me nahi
+# ================= 2. SETUP =================
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
-if not TELEGRAM_TOKEN or not GEMINI_API_KEY:
-    print("Error: API Keys nahi mili! Render settings check karo.")
-
-# ================= 3. GEMINI & BOT SETUP =================
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-pro')
+
+# --- NEW: Safety Filters ko OFF karna (Zaroori hai) ---
+safety_settings = [
+    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+]
+
+model = genai.GenerativeModel('gemini-pro', safety_settings=safety_settings)
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-PERSONA_PROMPT = """
-You are a playful, sassy, and slightly adventurous girlfriend named 'Ria'.
-You love teasing your partner (the user) and have a 'dangerous' sense of humor.
-You speak in a mix of Hindi and English (Hinglish).
-Keep your responses relatively short, engaging, and full of personality. Use emojis freely.
-"""
-
+PERSONA_PROMPT = "You are a playful, sassy girlfriend named Ria. Speak in Hinglish. Be naughty but safe."
 user_chats = {}
 
-# ================= 4. BOT COMMANDS =================
-
+# ================= 3. COMMANDS =================
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     user_id = message.chat.id
-    chat_session = model.start_chat(history=[
-        {'role': 'user', 'parts': [PERSONA_PROMPT]},
-        {'role': 'model', 'parts': ['Okay baby, samajh gayi. Main Ria hoon. 😉 Let\'s chat!']}
-    ])
+    chat_session = model.start_chat(history=[{'role': 'user', 'parts': [PERSONA_PROMPT]}])
     user_chats[user_id] = chat_session
-    bot.reply_to(message, "Hiii baby! 😉 Finally aa gaye? Main wait hi kar rahi thi. Bolo kya plan hai? 🔥")
-
-@bot.message_handler(commands=['pic'])
-def send_image(message):
-    chat_id = message.chat.id
-    try:
-        prompt_text = message.text.replace('/pic', '').strip()
-        if not prompt_text:
-            bot.reply_to(message, "Aise nahi baby, batao toh kaisi photo chahiye? Example: /pic beautiful girl in rain")
-            return
-        bot.send_chat_action(chat_id, 'upload_photo')
-        image_url = f"https://image.pollinations.ai/prompt/{prompt_text.replace(' ', '%20')}"
-        bot.send_photo(chat_id, image_url, caption="Ye lo, sirf tumhare liye! 😘")
-    except Exception as e:
-        bot.reply_to(message, "Uff, network issue hai shayad. Baad me try karna baby.")
+    bot.reply_to(message, "Hi baby! 😉 Main aa gayi. Filters hata diye hain, ab khul ke baat karo! 🔥")
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     user_id = message.chat.id
-    user_message = message.text
-    
-    if user_id not in user_chats:
-        chat_session = model.start_chat(history=[
-             {'role': 'user', 'parts': [PERSONA_PROMPT]},
-             {'role': 'model', 'parts': ['Ready to chat!']}
-        ])
-        user_chats[user_id] = chat_session
-
     try:
+        if user_id not in user_chats:
+            user_chats[user_id] = model.start_chat(history=[{'role': 'user', 'parts': [PERSONA_PROMPT]}])
+        
         bot.send_chat_action(user_id, 'typing')
-        response = user_chats[user_id].send_message(user_message)
+        response = user_chats[user_id].send_message(message.text)
         bot.reply_to(message, response.text)
-    except Exception:
-        bot.reply_to(message, "Mera mood thoda off hai (API Error), thodi der baad baat karte hain.")
+        
+    except Exception as e:
+        # Ab ye humein EXACT error batayega telegram par
+        error_msg = str(e)
+        print(f"Error: {error_msg}")
+        if "400" in error_msg:
+            bot.reply_to(message, "❌ Error: API Key galat hai. Check Render Environment Variables.")
+        elif "409" in error_msg:
+            bot.reply_to(message, "❌ Error: Conflict! Do bot chal rahe hain.")
+        else:
+            bot.reply_to(message, f"❌ Error: {error_msg}")
 
-# ================= 5. START SYSTEM =================
+# ================= 4. RUN =================
 if __name__ == "__main__":
-    keep_alive() # Server start karega
-    print("Bot is starting...")
-    bot.infinity_polling() # Bot start karega
+    keep_alive()
+    bot.infinity_polling()
