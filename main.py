@@ -69,6 +69,6 @@ def handle_message(message):
         bot.reply_to(message, f"❌ Error: {str(e)}")
 
 # ================= 4. RUN =================
-if name == "main":
+if __name__ == "__main__":
     keep_alive()
     bot.infinity_polling()
