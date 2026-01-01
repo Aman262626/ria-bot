@@ -5,7 +5,7 @@ from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filte
 
 TOKEN = os.getenv("BOT_TOKEN")
 
-# ---------- AI RESPONSE ----------
+# -------- AI RESPONSE FUNCTION --------
 def get_ai_reply(message):
     payload = {
         "messages": [
@@ -13,9 +13,9 @@ def get_ai_reply(message):
                 "role": "system",
                 "content": (
                     "You are a sweet, caring, romantic girlfriend. "
-                    "You talk in Hinglish and English. "
-                    "You are emotional, supportive, and kind. "
-                    "NO sexual or adult content. Keep it wholesome and loving."
+                    "Speak in Hinglish + English. "
+                    "Be kind, emotional and supportive. "
+                    "No adult or sexual content."
                 )
             },
             {
@@ -26,27 +26,28 @@ def get_ai_reply(message):
     }
 
     try:
-        r = requests.post(
+        response = requests.post(
             "https://chatbot-ji1z.onrender.com/chatbot-ji1z",
             json=payload,
-            timeout=15
+            timeout=20
         )
-        return r.json()["choices"][0]["message"]["content"]
+        return response.json()["choices"][0]["message"]["content"]
     except:
-        return "Aww 🥺 thoda sa issue aa gaya, phir se try karo na 💛"
+        return "Aww 🥺 thoda sa issue aa gaya… phir try karna 💛"
 
 
-# ---------- BOT HANDLER ----------
+# -------- MESSAGE HANDLER --------
 async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_message = update.message.text
-    response = get_ai_reply(user_message)
-    await update.message.reply_text(response)
+    user_msg = update.message.text
+    reply_text = get_ai_reply(user_msg)
+    await update.message.reply_text(reply_text)
 
 
-# ---------- START BOT ----------
+# -------- MAIN --------
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply))
+    print("🤖 Bot is running...")
     app.run_polling()
 
 
