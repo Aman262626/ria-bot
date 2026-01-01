@@ -1,20 +1,20 @@
 import os
 import requests
 from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
+from telegram.ext import Application, MessageHandler, ContextTypes, filters
 
 TOKEN = os.getenv("BOT_TOKEN")
 
-# -------- AI RESPONSE FUNCTION --------
+# ---------------- AI RESPONSE ----------------
 def get_ai_reply(message):
     payload = {
         "messages": [
             {
                 "role": "system",
                 "content": (
-                    "You are a sweet, caring, romantic girlfriend. "
-                    "Speak in Hinglish + English. "
-                    "Be kind, emotional and supportive. "
+                    "You are a sweet, caring girlfriend. "
+                    "Reply in Hinglish + English. "
+                    "Be loving, emotional, and friendly. "
                     "No adult or sexual content."
                 )
             },
@@ -26,26 +26,26 @@ def get_ai_reply(message):
     }
 
     try:
-        response = requests.post(
+        r = requests.post(
             "https://chatbot-ji1z.onrender.com/chatbot-ji1z",
             json=payload,
             timeout=20
         )
-        return response.json()["choices"][0]["message"]["content"]
+        return r.json()["choices"][0]["message"]["content"]
     except:
-        return "Aww 🥺 thoda sa issue aa gaya… phir try karna 💛"
+        return "Aww 🥺 thoda issue aa gaya, phir try karo na 💛"
 
 
-# -------- MESSAGE HANDLER --------
+# ---------------- BOT HANDLER ----------------
 async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_msg = update.message.text
-    reply_text = get_ai_reply(user_msg)
-    await update.message.reply_text(reply_text)
+    user_text = update.message.text
+    response = get_ai_reply(user_text)
+    await update.message.reply_text(response)
 
 
-# -------- MAIN --------
+# ---------------- MAIN ----------------
 def main():
-    app = ApplicationBuilder().token(TOKEN).build()
+    app = Application.builder().token(TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply))
     print("🤖 Bot is running...")
     app.run_polling()
